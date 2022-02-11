@@ -34,7 +34,7 @@ in_ = [None]*int(f.readline())
 out_ = [None]* len(in_)
 i = 0
 for x in f:
-    in_[i] = int(x)
+    in_[i] = float(x)
     i+=1
 f.close()
 
@@ -42,13 +42,12 @@ f.close()
 # Val = x**2        (x^2)
 # Val = x**2+x**3   (x^3+x^2)
 def applyFunc(x):
-    val = x**2+x**3
+    val = (x**3)+(x**2)+(x)-x*(25)
     return val
 
 i = 0
 for x in in_:
     out_[i] = applyFunc(x)
-    print(out_[i])
     i+=1
 
 
@@ -66,7 +65,7 @@ pset.addPrimitive(operator.mul, 2)
 pset.addPrimitive(protectedDiv, 2)
 pset.addPrimitive(operator.neg, 1)
 
-pset.addEphemeralConstant("rand101", lambda: random.randint(-1,1))
+#pset.addEphemeralConstant("rand101", lambda: random.randint(-1,1))
 pset.renameArguments(ARG0='x')
 
 creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
@@ -84,8 +83,14 @@ def evalSymbReg(individual):
     sqerrors = ((func(x) - y)**2 for x, y in zip(in_,out_))
     return math.fsum(sqerrors) / len(in_),
 
+def selElitistAndTournament(individuals, k, frac_elitist, tournsize):
+    return tools.selBest(individuals, int(k*frac_elitist)) + tools.selTournament(individuals, int(k*(1-frac_elitist)), tournsize=tournsize)
+
 toolbox.register("evaluate", evalSymbReg)
-toolbox.register("select", tools.selTournament, tournsize=params.tournamentSize)
+if(params.elite == 0):
+    toolbox.register("select", tools.selTournament, tournsize=params.tournamentSize)
+else:
+    toolbox.register("select", selElitistAndTournament, frac_elitist=0.1 , tournsize=params.tournamentSize)
 toolbox.register("mate", gp.cxOnePoint)
 toolbox.register("expr_mut", gp.genFull, min_=0, max_=2)
 toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
@@ -108,14 +113,38 @@ def main():
     mstats.register("max", numpy.max)
 
     pop, log = algorithms.eaSimple(pop, toolbox, params.crossoverRate, params.mutateRate, params.numGenerations, stats=mstats,
-                                   halloffame=hof, verbose=True)       
+                                   halloffame=hof, verbose=True)    
+
+    
+
+    import pandas as pd
+    import numpy as np
+    from functools import reduce
+    from operator import add, itemgetter
+
+    chapter_keys = log.chapters.keys()
+    sub_chaper_keys = [c[0].keys() for c in log.chapters.values()]
+
+    data = [list(map(itemgetter(*skey), chapter)) for skey, chapter 
+                in zip(sub_chaper_keys, log.chapters.values())]
+    data = np.array([[*a, *b] for a, b in zip(*data)])
+
+    columns = reduce(add, [["_".join([x, y]) for y in s] 
+                        for x, s in zip(chapter_keys, sub_chaper_keys)])
+    df = pd.DataFrame(data, columns=columns)
+
+    keys = log[0].keys()
+    data = [[d[k] for d in log] for k in keys]
+    for d, k in zip(data, keys):
+        df[k] = d
+    df.to_csv("run.csv")
+
     # print log and best
     best = tools.selBest(pop, k=1)
     print("Best Individual: ")
     #print(best[0])
     best = best[0]
     print(best)
-    func = gp.compile(best,pset)
-    print(func(16))
+
 if __name__ == "__main__":
     main()
