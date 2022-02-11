@@ -1,8 +1,25 @@
+#    This file is part of EAP.
+#
+#    EAP is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Lesser General Public License as
+#    published by the Free Software Foundation, either version 3 of
+#    the License, or (at your option) any later version.
+#
+#    EAP is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#    GNU Lesser General Public License for more details.
+#
+#    You should have received a copy of the GNU Lesser General Public
+#    License along with EAP. If not, see <http://www.gnu.org/licenses/>.
+
 import pandas as pd
-import numpy
+
 import operator
 import math
 import random
+import numpy
+import params
 
 from deap import algorithms
 from deap import base
@@ -10,57 +27,94 @@ from deap import creator
 from deap import tools
 from deap import gp
 
-file = pd.read_csv("../wdbc.csv")
+#ToDO: Read in inputs and ouputs from file
+
+#Line 1: Reads CSV, 2 creates a data frame, 3 Shuffles rows
+file = pd.read_csv("wdbc.csv")
 df = pd.DataFrame(file)
+df = df.sample(frac=1)
+
+in_ = {}
 
 
 
+# Define new functions
 def protectedDiv(left, right):
     try:
         return left / right
     except ZeroDivisionError:
         return 1
 
-pset = gp.PrimitiveSet("MAIN", 30)
+pset = gp.PrimitiveSet("MAIN", params.terminals)
 pset.addPrimitive(operator.add, 2)
 pset.addPrimitive(operator.sub, 2)
 pset.addPrimitive(operator.mul, 2)
 pset.addPrimitive(protectedDiv, 2)
 pset.addPrimitive(operator.neg, 1)
+#pset.addPrimitive(math.cos, 1)
+#pset.addPrimitive(math.sin, 1)
 pset.addEphemeralConstant("rand101", lambda: random.randint(-1,1))
+pset.renameArguments(ARG0='x')
 
 creator.create("FitnessMax", base.Fitness, weights=(1.0,))
 creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMax)
-
 toolbox = base.Toolbox()
-toolbox.register("expr", gp.genFull, pset=pset, min_=2, max_=17)
+toolbox.register("expr", gp.genHalfAndHalf, pset=pset, min_=1, max_=17)
 toolbox.register("individual", tools.initIterate, creator.Individual, toolbox.expr)
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 toolbox.register("compile", gp.compile, pset=pset)
 
-def evalMultiplexer(individual):
+#ToDO: Return something better than the value / points lmao :
+def evalSymbReg(individual):
+    # Transform the tree expression in a callable function
     func = toolbox.compile(expr=individual)
-    return sum(func(*in_) == out for in_, out in zip(inputs, outputs)),
 
-toolbox.register("evaluate", evalMultiplexer)
-toolbox.register("select", tools.selTournament, tournsize=7)
+    for a in df:
+        in_ = a 
+ 
+    hits = 0
+    for x, y in zip(in_[2:],in_[1:2]):
+        if (func(*x) > 0.0) and(y == "M"):
+            hits = hits + 1
+        elif (func(*x) < 0.0 and y == "B"):
+            hits = hits + 1
+    return hits,
+
+    #compare function(x) to out_(x)
+    #sqerrors = (func(x) == out for x, out in zip(in_, out_)) # From points
+    #return math.fsum(sqerrors) / len(in_),
+
+#ToDo put in input instead of points from file
+toolbox.register("evaluate", evalSymbReg) # In list
+toolbox.register("select", tools.selTournament, tournsize=params.tournamentSize)
 toolbox.register("mate", gp.cxOnePoint)
-toolbox.register("expr_mut", gp.genGrow, min_=0, max_=2)
+toolbox.register("expr_mut", gp.genFull, min_=0, max_=2)
 toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
 
+toolbox.decorate("mate", gp.staticLimit(key=operator.attrgetter("height"), max_value=params.maxDepth))
+toolbox.decorate("mutate", gp.staticLimit(key=operator.attrgetter("height"), max_value=params.maxDepth))
+
 def main():
-#    random.seed(10)
-    pop = toolbox.population(n=40)
+    random.seed(params.seed)
+
+    pop = toolbox.population(n=params.popSize)
     hof = tools.HallOfFame(1)
-    stats = tools.Statistics(lambda ind: ind.fitness.values)
-    stats.register("avg", numpy.mean)
-    stats.register("std", numpy.std)
-    stats.register("min", numpy.min)
-    stats.register("max", numpy.max)
 
-    algorithms.eaSimple(pop, toolbox, 0.8, 0.1, 40, stats, halloffame=hof)
+    stats_fit = tools.Statistics(lambda ind: ind.fitness.values)
+    stats_size = tools.Statistics(len)
+    mstats = tools.MultiStatistics(fitness=stats_fit, size=stats_size)
+    mstats.register("avg", numpy.mean)
+    mstats.register("std", numpy.std)
+    mstats.register("min", numpy.min)
+    mstats.register("max", numpy.max)
 
-    return pop, stats, hof
+    pop, log = algorithms.eaSimple(pop, toolbox, params.crossoverRate, params.mutateRate, params.numGenerations, stats=mstats,
+                                   halloffame=hof, verbose=True)       
+    # print log and best
+    best = tools.selBest(pop, k=1)
+    best = best[0]
+    print("Best Individual: ")
+    print(best)
 
 if __name__ == "__main__":
     main()

@@ -1,8 +1,8 @@
 seed = 318
-maxDeapth = 17
+maxDepth = 6
 tournamentSize = 3
-popSize = 300
-terminals = 1
+popSize = 50
+terminals = 30
 crossoverRate = 0.9
 mutateRate = 0.1
-numGenerations = 40
+numGenerations = 10
