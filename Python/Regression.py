@@ -27,9 +27,29 @@ from deap import creator
 from deap import tools
 from deap import gp
 
-#ToDO: Read in inputs and ouputs from file
-in_ = [1,2,3,4,5,6,7,8,9,10,11,12,13,14]
-out_ = [1,4,9,16,25,36,49,64,81,100,121,144,169,196]
+
+# Reading in from text file
+f = open("regressionData.txt", "r")
+in_ = [None]*int(f.readline())
+out_ = [None]* len(in_)
+i = 0
+for x in f:
+    in_[i] = int(x)
+    i+=1
+f.close()
+
+# Change function to calculate here
+# Val = x**2        (x^2)
+# Val = x**2+x**3   (x^3+x^2)
+def applyFunc(x):
+    val = x**2+x**3
+    return val
+
+i = 0
+for x in in_:
+    out_[i] = applyFunc(x)
+    print(out_[i])
+    i+=1
 
 
 # Define new functions
@@ -45,8 +65,7 @@ pset.addPrimitive(operator.sub, 2)
 pset.addPrimitive(operator.mul, 2)
 pset.addPrimitive(protectedDiv, 2)
 pset.addPrimitive(operator.neg, 1)
-#pset.addPrimitive(math.cos, 1)
-#pset.addPrimitive(math.sin, 1)
+
 pset.addEphemeralConstant("rand101", lambda: random.randint(-1,1))
 pset.renameArguments(ARG0='x')
 
@@ -71,8 +90,8 @@ toolbox.register("mate", gp.cxOnePoint)
 toolbox.register("expr_mut", gp.genFull, min_=0, max_=2)
 toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
 
-toolbox.decorate("mate", gp.staticLimit(key=operator.attrgetter("height"), max_value=params.maxDepth))
-toolbox.decorate("mutate", gp.staticLimit(key=operator.attrgetter("height"), max_value=params.maxDepth))
+toolbox.decorate("mate", gp.staticLimit(key=operator.attrgetter("height"), max_value=params.maxDeapth))
+toolbox.decorate("mutate", gp.staticLimit(key=operator.attrgetter("height"), max_value=params.maxDeapth))
 
 def main():
     random.seed(params.seed)
@@ -97,6 +116,6 @@ def main():
     best = best[0]
     print(best)
     func = gp.compile(best,pset)
-    print(func(10))
+    print(func(16))
 if __name__ == "__main__":
     main()
