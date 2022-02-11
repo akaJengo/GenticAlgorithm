@@ -28,8 +28,8 @@ from deap import tools
 from deap import gp
 
 #ToDO: Read in inputs and ouputs from file
-in_ = [1,2,3,4,5]
-out_ = [1,4,9,16,25]
+in_ = [1,2,3,4,5,6,7,8,9,10,11,12,13,14]
+out_ = [1,4,9,16,25,36,49,64,81,100,121,144,169,196]
 
 
 # Define new functions
@@ -59,19 +59,13 @@ toolbox.register("individual", tools.initIterate, creator.Individual, toolbox.ex
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 toolbox.register("compile", gp.compile, pset=pset)
 
-def evalSymbReg(individual, points):
+def evalSymbReg(individual):
     # Transform the tree expression in a callable function
     func = toolbox.compile(expr=individual)
-    hits = 0
-    for x, y in zip(in_,out_):
-        if (func(x) > 0.0) and(y == "M"):
-            hits = hits + 1
-        elif (func(x) < 0.0 and y == "B"):
-            hits = hits + 1
-    return hits,
+    sqerrors = ((func(x) - y)**2 for x, y in zip(in_,out_))
+    return math.fsum(sqerrors) / len(in_),
 
-#ToDo put in input instead of points from file
-toolbox.register("evaluate", evalSymbReg, points=[x for x in range(1,6)]) # In list
+toolbox.register("evaluate", evalSymbReg)
 toolbox.register("select", tools.selTournament, tournsize=params.tournamentSize)
 toolbox.register("mate", gp.cxOnePoint)
 toolbox.register("expr_mut", gp.genFull, min_=0, max_=2)
@@ -98,7 +92,11 @@ def main():
                                    halloffame=hof, verbose=True)       
     # print log and best
     best = tools.selBest(pop, k=1)
-    print("Best Individual: " + best[0])
-
+    print("Best Individual: ")
+    #print(best[0])
+    best = best[0]
+    print(best)
+    func = gp.compile(best,pset)
+    print(func(10))
 if __name__ == "__main__":
     main()
