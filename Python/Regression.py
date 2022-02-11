@@ -13,6 +13,7 @@
 #    You should have received a copy of the GNU Lesser General Public
 #    License along with EAP. If not, see <http://www.gnu.org/licenses/>.
 
+from multiprocessing.sharedctypes import Value
 import operator
 import math
 import random
@@ -58,13 +59,16 @@ toolbox.register("individual", tools.initIterate, creator.Individual, toolbox.ex
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 toolbox.register("compile", gp.compile, pset=pset)
 
-#ToDO: Return something better than the value / points lmao :)
 def evalSymbReg(individual, points):
     # Transform the tree expression in a callable function
     func = toolbox.compile(expr=individual)
-    #compare function(x) to out_(x)
-    sqerrors = (func(x) == out for x, out in zip(points, out_)) # From points
-    return math.fsum(sqerrors) / len(points),
+    hits = 0
+    for x, y in zip(in_,out_):
+        if (func(x) > 0.0) and(y == "M"):
+            hits = hits + 1
+        elif (func(x) < 0.0 and y == "B"):
+            hits = hits + 1
+    return hits,
 
 #ToDo put in input instead of points from file
 toolbox.register("evaluate", evalSymbReg, points=[x for x in range(1,6)]) # In list
