@@ -34,6 +34,21 @@ file = pd.read_csv("wdbc.csv")
 df = pd.DataFrame(file)
 df = df.sample(frac=1)
 
+length = len(df.index) #568
+length = math.floor(length*(3/4)) #426
+
+train = df[:length] #0-426
+train_length = len(train.index)
+print("Total Train size: ",train_length)
+#print(train)
+
+#print("------------------------------------")
+
+test = df[train_length:len(df.index)] #426-568 (142)
+test_length = len(test.index)
+print("Total Test size: ",test_length)
+#print(test)
+
 in_ = {}
 
 
@@ -54,7 +69,6 @@ pset.addPrimitive(operator.neg, 1)
 #pset.addPrimitive(math.cos, 1)
 #pset.addPrimitive(math.sin, 1)
 pset.addEphemeralConstant("rand101", lambda: random.randint(-1,1))
-pset.renameArguments(ARG0='x')
 
 creator.create("FitnessMax", base.Fitness, weights=(1.0,))
 creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMax)
@@ -69,7 +83,7 @@ def evalSymbReg(individual):
     # Transform the tree expression in a callable function
     func = toolbox.compile(expr=individual)
 
-    for a in df:
+    for a in train:
         in_ = a 
  
     hits = 0
