@@ -42,8 +42,6 @@ train_length = len(train.index)
 print("Total Train size: ",train_length)
 #print(train)
 
-#print("------------------------------------")
-
 test = df[train_length:len(df.index)] #426-568 (142)
 test_length = len(test.index)
 print("Total Test size: ",test_length)
@@ -51,9 +49,6 @@ print("Total Test size: ",test_length)
 
 in_ = {}
 
-
-
-# Define new functions
 def protectedDiv(left, right):
     try:
         return left / right
@@ -78,9 +73,7 @@ toolbox.register("individual", tools.initIterate, creator.Individual, toolbox.ex
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 toolbox.register("compile", gp.compile, pset=pset)
 
-#ToDO: Return something better than the value / points lmao :
 def evalSymbReg(individual):
-    # Transform the tree expression in a callable function
     func = toolbox.compile(expr=individual)
 
     for a in train:
@@ -94,11 +87,6 @@ def evalSymbReg(individual):
             hits = hits + 1
     return hits,
 
-    #compare function(x) to out_(x)
-    #sqerrors = (func(x) == out for x, out in zip(in_, out_)) # From points
-    #return math.fsum(sqerrors) / len(in_),
-
-#ToDo put in input instead of points from file
 toolbox.register("evaluate", evalSymbReg) # In list
 toolbox.register("select", tools.selTournament, tournsize=params.tournamentSize)
 toolbox.register("mate", gp.cxOnePoint)
@@ -129,6 +117,9 @@ def main():
     best = best[0]
     print("Best Individual: ")
     print(best)
+    #tree = gp.compile(best,pset)
+    #print(in_[1:2])
+    #print(tree(*in_[2:]))
 
 if __name__ == "__main__":
     main()
