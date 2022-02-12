@@ -1,11 +1,11 @@
-seed = 972
-maxDeapth = 17
+seed = 1
+maxDepth = 17
 tournamentSize = 3
-popSize = 400
-terminals = 1
-crossoverRate = 0.0
-mutateRate = 1.0
-numGenerations = 25 # 200
+popSize = 300
+terminals = 30
+crossoverRate = 0.9
+mutateRate = 0.1
+numGenerations = 20 # 200
 
 # (0) No Elitism (1) Using Elitism 
 elite = 1
