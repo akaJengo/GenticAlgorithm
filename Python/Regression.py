@@ -17,9 +17,11 @@ from multiprocessing.sharedctypes import Value
 import operator
 import math
 import random
-
-import numpy
-import params
+import pandas as pd
+import numpy as np
+from functools import reduce
+from operator import add, itemgetter
+import params as p
 
 from deap import algorithms
 from deap import base
@@ -29,7 +31,7 @@ from deap import gp
 
 
 # Reading in from text file
-f = open("regressionData.txt", "r")
+f = open(p.file, "r")
 in_ = [None]*int(f.readline())
 out_ = [None]* len(in_)
 i = 0
@@ -58,7 +60,7 @@ def protectedDiv(left, right):
     except ZeroDivisionError:
         return 1
 
-pset = gp.PrimitiveSet("MAIN", params.terminals)
+pset = gp.PrimitiveSet("MAIN", p.terminals)
 pset.addPrimitive(operator.add, 2)
 pset.addPrimitive(operator.sub, 2)
 pset.addPrimitive(operator.mul, 2)
@@ -87,40 +89,33 @@ def selElitistAndTournament(individuals, k, frac_elitist, tournsize):
     return tools.selBest(individuals, int(k*frac_elitist)) + tools.selTournament(individuals, int(k*(1-frac_elitist)), tournsize=tournsize)
 
 toolbox.register("evaluate", evalSymbReg)
-if(params.elite == 0):
-    toolbox.register("select", tools.selTournament, tournsize=params.tournamentSize)
+if(p.elite == 0):
+    toolbox.register("select", tools.selTournament, tournsize=p.tournamentSize)
 else:
-    toolbox.register("select", selElitistAndTournament, frac_elitist=0.1 , tournsize=params.tournamentSize)
+    toolbox.register("select", selElitistAndTournament, frac_elitist=0.1 , tournsize=p.tournamentSize)
 toolbox.register("mate", gp.cxOnePoint)
 toolbox.register("expr_mut", gp.genFull, min_=0, max_=2)
 toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
 
-toolbox.decorate("mate", gp.staticLimit(key=operator.attrgetter("height"), max_value=params.maxDeapth))
-toolbox.decorate("mutate", gp.staticLimit(key=operator.attrgetter("height"), max_value=params.maxDeapth))
+toolbox.decorate("mate", gp.staticLimit(key=operator.attrgetter("height"), max_value=p.maxDepth))
+toolbox.decorate("mutate", gp.staticLimit(key=operator.attrgetter("height"), max_value=p.maxDepth))
 
 def main():
-    random.seed(params.seed)
+    random.seed(p.seed)
 
-    pop = toolbox.population(n=params.popSize)
+    pop = toolbox.population(n=p.popSize)
     hof = tools.HallOfFame(1)
 
     stats_fit = tools.Statistics(lambda ind: ind.fitness.values)
     stats_size = tools.Statistics(len)
     mstats = tools.MultiStatistics(fitness=stats_fit, size=stats_size)
-    mstats.register("avg", numpy.mean)
-    mstats.register("std", numpy.std)
-    mstats.register("min", numpy.min)
-    mstats.register("max", numpy.max)
+    mstats.register("avg", np.mean)
+    mstats.register("std", np.std)
+    mstats.register("min", np.min)
+    mstats.register("max", np.max)
 
-    pop, log = algorithms.eaSimple(pop, toolbox, params.crossoverRate, params.mutateRate, params.numGenerations, stats=mstats,
+    pop, log = algorithms.eaSimple(pop, toolbox, p.crossoverRate, p.mutateRate, p.numGenerations, stats=mstats,
                                    halloffame=hof, verbose=True)    
-
-    
-
-    import pandas as pd
-    import numpy as np
-    from functools import reduce
-    from operator import add, itemgetter
 
     chapter_keys = log.chapters.keys()
     sub_chaper_keys = [c[0].keys() for c in log.chapters.values()]
