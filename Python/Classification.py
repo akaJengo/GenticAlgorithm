@@ -1,17 +1,3 @@
-#    This file is part of EAP.
-#
-#    EAP is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU Lesser General Public License as
-#    published by the Free Software Foundation, either version 3 of
-#    the License, or (at your option) any later version.
-#
-#    EAP is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-#    GNU Lesser General Public License for more details.
-#
-#    You should have received a copy of the GNU Lesser General Public
-#    License along with EAP. If not, see <http://www.gnu.org/licenses/>.
 
 import pandas as pd
 
@@ -26,29 +12,37 @@ from deap import base
 from deap import creator
 from deap import tools
 from deap import gp
+from functools import reduce
+from operator import add, itemgetter
 
-#ToDO: Read in inputs and ouputs from file
+#If you would like to output the testing data to 
+#run.csv in the current wroking folder. 
+output_to_csv = True
 
+#Reads the csv file and shuffles the data using a set seed.
 file = pd.read_csv("wdbc.csv")
 df = pd.DataFrame(file)
 df = df.sample(frac=1,random_state=params.seed)
 
-length = len(df.index) #568
-length = math.floor(length*(3/4)) #426
+#Calculates the length of the training data and splits accordingly
+length = len(df.index) #Total length 568
+length = math.floor(length*(3/4)) # Split at 426
 
+#Sets the trainging data
 train = df[:length] #0-426
 train_length = len(train.index)
 print("Total Train size: ",train_length)
-#print(train)
 
+#Sets the testing data
 test = df[train_length:len(df.index)] #426-568 (142)
 test_length = len(test.index)
 print("Total Test size: ",test_length)
+print("Random num: ",params.seed)
 
 train = train.to_numpy()
 test = test.to_numpy()
 
-
+#Creates functions to be used in the genetic program
 def protectedDiv(left, right):
     try:
         return left / right
@@ -75,6 +69,12 @@ toolbox.register("individual", tools.initIterate, creator.Individual, toolbox.ex
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 toolbox.register("compile", gp.compile, pset=pset)
 
+#This is the evaluation function, simply put, if the 
+#guess was correct it increases hits. The point of the
+#GP is to maximize our hits on the algorithm. If it is
+#Malignant and the evalutation of the tree is greater than
+#zero then we increase hits, otherwise if evaluation is 
+#negative and Benign, we decrease hits.
 def evalSymbReg(individual):
     func = toolbox.compile(expr=individual)
 
@@ -86,6 +86,7 @@ def evalSymbReg(individual):
             hits = hits + 1
     return hits,
 
+#Registers the parameters for the genetic program. 
 toolbox.register("evaluate", evalSymbReg) # In list
 toolbox.register("select", tools.selTournament, tournsize=params.tournamentSize)
 toolbox.register("mate", gp.cxOnePoint)
@@ -96,12 +97,10 @@ toolbox.decorate("mate", gp.staticLimit(key=operator.attrgetter("height"), max_v
 toolbox.decorate("mutate", gp.staticLimit(key=operator.attrgetter("height"), max_value=params.maxDepth))
 
 def run():
-
+    #Catalogs the statistical output of the genetic program. 
     random.seed(params.seed)
-
     pop = toolbox.population(n=params.popSize)
     hof = tools.HallOfFame(1)
-
     stats_fit = tools.Statistics(lambda ind: ind.fitness.values)
     stats_size = tools.Statistics(len)
     mstats = tools.MultiStatistics(fitness=stats_fit, size=stats_size)
@@ -110,22 +109,42 @@ def run():
     mstats.register("min", numpy.min)
     mstats.register("max", numpy.max)
 
+    #Runs the genetic program
     pop, log = algorithms.eaSimple(pop, toolbox, params.crossoverRate, params.mutateRate, params.numGenerations, stats=mstats,
-                                halloffame=hof, verbose=True)       
-    # print log and best
+                                halloffame=hof, verbose=True) 
+
+    #Next few lines prepare the statistical output and prepare
+    #to output into a CSV file called run.csv.
+
+    if output_to_csv == True:
+        chapter_keys = log.chapters.keys()
+        sub_chaper_keys = [c[0].keys() for c in log.chapters.values()]
+
+        data = [list(map(itemgetter(*skey), chapter)) for skey, chapter 
+                    in zip(sub_chaper_keys, log.chapters.values())]
+        data = numpy.array([[*a, *b] for a, b in zip(*data)])
+
+        columns = reduce(add, [["_".join([x, y]) for y in s] 
+                            for x, s in zip(chapter_keys, sub_chaper_keys)])
+        df = pd.DataFrame(data, columns=columns)
+
+        keys = log[0].keys()
+        data = [[d[k] for d in log] for k in keys]
+        for d, k in zip(data, keys):
+            df[k] = d
+        df.to_csv("run.csv")      
+
+    #Selects the best individual from the final generation
     best = tools.selBest(pop, k=1)
     best = best[0]
     print("Best Individual: ")
     print(best)
     tree = gp.compile(best,pset)
-    #print(in_[1:2])
 
-
-    #p = in_test[2:]
-    #print(tree(x))
-
+    #Using the best selected individual runs the testing data
+    #on the best selected tree. Then creates the confusion matrix
+    #for this particular run. 
     print("Running Tests: ")
-    hits_malig = 0
     false_pos = 0
     true_pos = 0 
     true_neg = 0 
@@ -134,6 +153,11 @@ def run():
         val = tree(*x)
         type = y[0]
         
+        #If the evaluation is greater than zero and malignant
+        #it is marked as a true positive, otherwise it is 
+        #benign and greater than zero which is a false positive. 
+        #If the value is less than zero and benign it is a true,
+        #negative, otherwise it must be a false negative. 
         if val > 0.0:
             if type == 'M':
                 true_pos += 1
@@ -145,8 +169,16 @@ def run():
             else:
                 false_neg +=1 
 
-    print("True Pos: ",true_pos," True Neg: ",true_neg,
-    " False Pos: ",false_pos," False Neg: ",false_neg)
+    #Output of the confusion matrix 
+    print("True Pos: ")
+    print(true_pos)
+    print("True Neg: ")
+    print(true_neg)
+    print("False Pos: ")
+    print(false_pos)
+    print("False Neg: ")
+    print(false_neg)
 
+#Main driver
 if __name__ == "__main__":
     run()
