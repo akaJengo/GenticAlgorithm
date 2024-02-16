@@ -48,9 +48,9 @@ To deploy this project run
 
 ## Papers
 ### Testing Paramters on Symbolic Regression
-![Testing Regression](/Testing_GP_Parameters_on_Symbolic_Regression.pdf)
+![Testing Regression](Testing_GP_Parameters_on_Symbolic_Regression.pdf)
 ### Classification Analysis
-![Breast Cancer Classification](/Classification_of_Breast_Cancer_with_Genetic_Programing_2.pdf)
+![Breast Cancer Classification](Classification_of_Breast_Cancer_with_Genetic_Programing_2.pdf)
 
 
 ## Authors
