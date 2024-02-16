@@ -18,7 +18,7 @@ Pip packages required
 
 #### Running program
 These paramters can be changed prior to running the Classification algorithm or the Regression algorithm. 
-```http
+```bash
   python3 params.py 
 ```
 
